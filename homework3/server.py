@@ -115,7 +115,7 @@ def start_server(host='0.0.0.0', port=0):
     server_socket.bind((host, port))
     port = server_socket.getsockname()[1]
     server_socket.listen()
-    print(f"Listening on {socket.gethostname()}:{port}")
+    print(f"Listening on {socket.gethostbyname(socket.gethostname())}:{port}")
     logging.info(f"Server started on {host}:{port}")
 
     broadcast_thread = threading.Thread(target=broadcast_status)
