@@ -13,12 +13,19 @@ class AuctionState:
 
     def add_client(self, client_address, client_socket):
         with self.lock:
-            self.clients[client_address] = client_socket
+            ip_address = client_address[0] 
+            self.clients[ip_address] = client_socket
 
     def remove_client(self, client_address):
         with self.lock:
-            del self.clients[client_address]
+            if self.client_joined:
+                del self.clients[client_address[0]]
 
+    def client_joined(self, client_address):
+        with self.lock:
+            ip_address = client_address[0]
+            return ip_address in self.clients
+        
     def update_bid(self, bidder, bid):
         with self.lock:
             if bid > self.highest_bid:
