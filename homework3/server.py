@@ -1,14 +1,17 @@
+import math
 import socket
 import json
 import threading
 import time
 
-clients = set() 
+clients = set()
+join_set = set()
 highest_bid = 0
 highest_bidder = None
-chant = 3;
-chant_lock = threading.Lock()
+chant = 0
+last_bid_time = None
 bid_lock = threading.Lock()
+is_closed = False
 
 MESSAGE = {
     200: 'OK',
@@ -21,28 +24,29 @@ status_msg = {
     "status": "OPEN",
     "highest_bid": highest_bid,
     "highest_bidder": highest_bidder,
-    "chant": 3, 
+    "chant": 0,
     "n_clients": 0,
     "next_auction": None
 }
 
 def handle_request(client_address, request):
-    global highest_bid, highest_bidder, chant
+    global highest_bid, highest_bidder, chant, last_bid_time
     request_json = json.loads(request.split('\r\n\r\n')[-1])
     data = None
     status_code = 200
 
     if request_json["request_type"] == "JOIN":
         data = status_msg
+        join_set.add(client_address)
     elif request_json["request_type"] == "BID":
         new_bid = request_json.get("bid_amount") 
         if new_bid is not None:  
             with bid_lock:
-                if new_bid > highest_bid:
+                if new_bid > highest_bid and not is_closed and client_address in join_set:
                     highest_bid = new_bid
                     highest_bidder = client_address
-                    with chant_lock:
-                        chant = 3
+                    last_bid_time = time.time()
+                    chant = 0
                     data = {"request_type":"BID_ACK","bid_status":"ACCEPTED"}
                 else:
                     data = {"request_type":"BID_ACK","bid_status":"REJECTED"}
@@ -66,14 +70,15 @@ def build_http_response(status_code, data):
     )
 
 def broadcast_status():
-    global highest_bid, highest_bidder, clients, chant
+    global highest_bid, highest_bidder, clients, chant, last_bid_time, is_closed
     while True:
-        time.sleep(10)
-        with chant_lock:
-            if chant > 0:
-                chant -= 1
-        with bid_lock:
-            
+        time.sleep(0.01)
+        with (bid_lock):
+            tmp = time.time()
+            if last_bid_time is None or math.floor((time.time() - last_bid_time) / 10) <= chant or is_closed:
+                continue
+            if chant < 3:
+                chant += 1
             status_msg.update({
                 "highest_bid": highest_bid,
                 "highest_bidder": highest_bidder,
@@ -81,8 +86,9 @@ def broadcast_status():
                 "chant": chant
             })
             
-          
-            if status_msg["chant"] == 0:
+
+            if chant == 3:
+                is_closed = True
                 close_msg = {"request_type":"CLOSE", "highest_bid": highest_bid, "highest_bidder":highest_bidder}
                 response = build_http_response(503, close_msg)
                 for client in clients:
@@ -108,7 +114,7 @@ def handle_client_connection(client_socket, client_address):
     global highest_bid, highest_bidder, clients
     print(f"New connection from {client_address}")
     with bid_lock:
-        clients.add(client_socket) 
+        clients.add(client_socket)
     try:
         while True:
             data = client_socket.recv(1024).decode('utf-8')
