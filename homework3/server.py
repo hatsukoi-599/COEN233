@@ -86,9 +86,8 @@ def broadcast_status():
             try:
                 client_socket.sendall(response.encode('utf-8'))
                 logging.info(f"Status broadcasted to {client_address}")
-                if auction_state.chant == 3:
+                if auction_state.chant > 3:
                     client_socket.close()
-                    logging.error(f"Error broadcasting to {client_address}: {e}")
                     print(f"Connection closed for {client_socket}")
                 
             except Exception as e:
