@@ -1,6 +1,7 @@
 import socket
 import threading
 import json
+import sys
 
 # URL for the server, will be initialized later
 url = None
@@ -76,7 +77,14 @@ def start_client(server_host, server_port):
         send_requests(sock)
 
 if __name__ == '__main__':
-    server_host = '0.0.0.0'
-    server_port = 8000
+    # Check for 2 arguments
+    if len(sys.argv) != 3:
+        print("Usage: python script.py <server_host> <server_port>")
+        sys.exit(1)
+
+    # Save command line arguments
+    server_host = sys.argv[1]
+    server_port = int(sys.argv[2])
+
     url = f"{server_host}:{server_port}"
     start_client(server_host, server_port)
