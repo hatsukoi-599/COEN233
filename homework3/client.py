@@ -10,12 +10,16 @@ def send_requests(sock):
     """Handles sending requests from the client to the server in a dedicated thread."""
     try:
         while True:
-            request_type = input("Enter request type (JOIN, BID, or QUIT to exit): ")
+            request_type = input("Enter request type (JOIN, BID, or QUIT to exit): ").upper()
             request = None
-            if request_type.upper() == "QUIT":
+            if request_type == "QUIT":
                 break  # Exit loop if user wants to quit
-            if request_type.upper() == "BID":
-                bid_amount = float(input("Enter your bid amount: "))
+            if request_type == "BID":
+                try:
+                    bid_amount = float(input("Enter your bid amount: "))
+                except Exception as e:
+                    print(f"Bid input error: {e}")
+
                 # Prepare request data for a bid
                 request = pack_data(request_type, bid_amount)
             else:

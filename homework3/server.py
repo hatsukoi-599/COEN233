@@ -89,7 +89,10 @@ def broadcast_status():
                 if auction_state.chant > 3:
                     client_socket.close()
                     print(f"Connection closed for {client_socket}")
-                
+            except BrokenPipeError:
+                print(f"Broken pipe error broadcasting to {client_address}")
+                client_socket.close()  # Close the socket
+                auction_state.remove_client(client_address)    
             except Exception as e:
                 print(f"Error broadcasting to {client_address}: {e}")
                 auction_state.remove_client(client_address)
@@ -105,9 +108,10 @@ def handle_client_connection(client_socket, client_address):
             response = handle_request(client_address, client_socket, data)
             client_socket.sendall(response.encode('utf-8'))
     except Exception as e:
-        logging.error(f"Error handling connection from {client_address}: {e}")
-        print(f"Error handling connection from {client_address}: {e}")
-   
+        logging.info(f"Connection closed for {client_address}")
+        print(f"Connection closed for {client_address}")
+        client_socket.close()  # Close the socket
+        auction_state.remove_client(client_address)     
 
 def start_server(host='0.0.0.0', port=0):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
