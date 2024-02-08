@@ -88,7 +88,7 @@ def broadcast_status():
                 logging.info(f"Status broadcasted to {client_address}")
                 if auction_state.chant == 3:
                     client_socket.close()
-                    logging.error(f"Error broadcasting to {client_address}: {e}")
+                    logging.error(f"Error broadcasting to {client_address}")
                     print(f"Connection closed for {client_socket}")
                 
             except Exception as e:
@@ -110,12 +110,13 @@ def handle_client_connection(client_socket, client_address):
         print(f"Error handling connection from {client_address}: {e}")
    
 
-def start_server(host='0.0.0.0', port=8000):
+def start_server(host='0.0.0.0', port=0):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((host, port))
+    port = server_socket.getsockname()[1]
     server_socket.listen()
-    print(f"Listening on {host}:{port}")
+    print(f"Listening on {socket.gethostname()}:{port}")
     logging.info(f"Server started on {host}:{port}")
 
     broadcast_thread = threading.Thread(target=broadcast_status)
