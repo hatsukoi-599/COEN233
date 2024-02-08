@@ -18,7 +18,7 @@ class AuctionState:
 
     def remove_client(self, client_address):
         with self.lock:
-            if self.client_joined:
+            if self.client_joined and client_address[0] in self.clients:
                 del self.clients[client_address[0]]
 
     def client_joined(self, client_address):
