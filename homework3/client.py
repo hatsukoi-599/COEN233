@@ -67,17 +67,9 @@ def receive_responses(sock):
             # Parse JSON from response body
             response_json = json.loads(body)
             print("Received:", response_json)
-
-            if "503 Service Unavailable" in headers:
-                server_unavailable = True
-                print("Received 503 Service Unavailable from server.")
-                break
             
     except Exception as e:
         print(f"Error receiving responses: {e}")
-    finally:
-        sock.close()
-        sys.exit("Exiting due to server 503 response.")  
 
 def start_client(server_host, server_port):
     """Initializes the client and connects to the server."""

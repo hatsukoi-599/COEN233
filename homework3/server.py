@@ -15,8 +15,7 @@ logging.basicConfig(filename='server.log',
 
 MESSAGE = {
     200: 'OK',
-    400: 'Bad Request',
-    503: 'Service Unavailable'
+    400: 'Bad Request'
 }
 
 def handle_request(client_address, client_socket, request):
@@ -64,7 +63,7 @@ def build_http_response(status_code, data):
 def broadcast_status():
     global auction_state
     logging.info("Broadcasting status")
-    while True:
+    while not stop_server:
         time.sleep(0.01)
         response = None
         last_bid_time = auction_state.last_bid_time
@@ -75,8 +74,9 @@ def broadcast_status():
            
         if auction_state.chant > 3:
             msg = {"request_type":"CLOSE", "highest_bid": auction_state.highest_bid, "highest_bidder":auction_state.highest_bidder}
-            response = build_http_response(503, msg)
-            print('Aunction End')
+            response = build_http_response(200, msg)
+            logging.info(f"Auction end - Winner: {auction_state.highest_bidder} with a bid of {auction_state.highest_bid}")
+            print('Auction ended, starting a new one.')
 
         else:
             response = build_http_response(200, auction_state.build_status_message())
@@ -92,9 +92,6 @@ def broadcast_status():
 
                 client_socket.sendall(response.encode('utf-8'))
                 logging.info(f"Status broadcasted to {client_address}")
-                if auction_state.chant > 3:
-                    client_socket.close()
-                    print(f"Connection closed for {client_socket}")
             except BrokenPipeError:
                 print(f"Broken pipe error broadcasting to {client_address}")
                 client_socket.close()  # Close the socket
@@ -111,23 +108,24 @@ def handle_client_connection(client_socket, client_address):
     logging.info(f"New connection from {client_address}")
     print(f"New connection from {client_address}")
     try:
-        while True:
+        while not stop_server:
             data = client_socket.recv(1024).decode('utf-8')
             if not data:
                 break
             response = handle_request(client_address, client_socket, data)
             client_socket.sendall(response.encode('utf-8'))
     except Exception as e:
-        logging.info(f"Connection closed for {client_address}")
-        print(f"Connection closed for {client_address}")
+        logging.info(f"Disconnected from {client_address}")
+        print(f"Disconnected from {client_address}")
     finally:
-        client_socket.close()
-        auction_state.remove_client(client_address)
         logging.info(f"Connection closed and cleaned up for {client_address}")
         client_socket.close()  # Close the socket
         auction_state.remove_client(client_address)  
 
+stop_server = False
+
 def start_server(host='0.0.0.0', port=0):
+    global stop_server
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((host, port))
@@ -140,7 +138,7 @@ def start_server(host='0.0.0.0', port=0):
     broadcast_thread.start()
 
     try:
-        while True:
+        while not stop_server:
             client_socket, client_address = server_socket.accept()
             client_thread = threading.Thread(target=handle_client_connection, args=(client_socket, client_address))
             client_thread.start()
@@ -148,6 +146,7 @@ def start_server(host='0.0.0.0', port=0):
         print("Caught keyboard interrupt, exiting")
         logging.info("Server shutdown initiated by KeyboardInterrupt")
     finally:
+        stop_server = True
         server_socket.close()
         logging.info("Server shutdown completed")
 
