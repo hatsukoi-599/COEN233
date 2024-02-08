@@ -63,7 +63,7 @@ def build_http_response(status_code, data):
 def broadcast_status():
     global auction_state
     logging.info("Broadcasting status")
-    while not stop_server:
+    while True:
         time.sleep(0.01)
         response = None
         last_bid_time = auction_state.last_bid_time
@@ -108,7 +108,7 @@ def handle_client_connection(client_socket, client_address):
     logging.info(f"New connection from {client_address}")
     print(f"New connection from {client_address}")
     try:
-        while not stop_server:
+        while True:
             data = client_socket.recv(1024).decode('utf-8')
             if not data:
                 break
@@ -122,10 +122,7 @@ def handle_client_connection(client_socket, client_address):
         client_socket.close()  # Close the socket
         auction_state.remove_client(client_address)  
 
-stop_server = False
-
 def start_server(host='0.0.0.0', port=0):
-    global stop_server
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((host, port))
@@ -138,7 +135,7 @@ def start_server(host='0.0.0.0', port=0):
     broadcast_thread.start()
 
     try:
-        while not stop_server:
+        while True:
             client_socket, client_address = server_socket.accept()
             client_thread = threading.Thread(target=handle_client_connection, args=(client_socket, client_address))
             client_thread.start()
@@ -146,7 +143,6 @@ def start_server(host='0.0.0.0', port=0):
         print("Caught keyboard interrupt, exiting")
         logging.info("Server shutdown initiated by KeyboardInterrupt")
     finally:
-        stop_server = True
         server_socket.close()
         logging.info("Server shutdown completed")
 
