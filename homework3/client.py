@@ -51,6 +51,8 @@ def receive_responses(sock):
     try:
         while True:
             response = sock.recv(4096)
+            if not response:
+                break
             # Decode response from bytes to string
             response_str = response.decode('utf-8')
             # Split response into headers and body
@@ -60,6 +62,9 @@ def receive_responses(sock):
             print("Received:", response_json)
     except Exception as e:
         print(f"Error receiving responses: {e}")
+    finally:
+        sock.close()
+        return   
 
 def start_client(server_host, server_port):
     """Initializes the client and connects to the server."""

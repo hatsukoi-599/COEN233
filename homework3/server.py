@@ -1,14 +1,10 @@
+import math
 import socket
 import json
 import threading
 import time
-
-clients = set() 
-highest_bid = 0
-highest_bidder = None
-chant = 3;
-chant_lock = threading.Lock()
-bid_lock = threading.Lock()
+from auction_state import AuctionState
+auction_state = AuctionState()
 
 MESSAGE = {
     200: 'OK',
@@ -16,37 +12,25 @@ MESSAGE = {
     503: 'Service Unavailable'
 }
 
-status_msg = {
-    "request_type": "STATUS",
-    "status": "OPEN",
-    "highest_bid": highest_bid,
-    "highest_bidder": highest_bidder,
-    "chant": 3, 
-    "n_clients": 0,
-    "next_auction": None
-}
-
-def handle_request(client_address, request):
-    global highest_bid, highest_bidder, chant
+def handle_request(client_address, client_socket, request):
+    global auction_state
     request_json = json.loads(request.split('\r\n\r\n')[-1])
     data = None
     status_code = 200
 
     if request_json["request_type"] == "JOIN":
-        data = status_msg
+        auction_state.add_client(client_address, client_socket)
+        data = auction_state.build_status_message();
+    
     elif request_json["request_type"] == "BID":
         new_bid = request_json.get("bid_amount") 
         if new_bid is not None:  
-            with bid_lock:
-                if new_bid > highest_bid:
-                    highest_bid = new_bid
-                    highest_bidder = client_address
-                    with chant_lock:
-                        chant = 3
-                    data = {"request_type":"BID_ACK","bid_status":"ACCEPTED"}
-                else:
-                    data = {"request_type":"BID_ACK","bid_status":"REJECTED"}
-                    status_code = 400
+            if new_bid > auction_state.highest_bid and client_address in auction_state.clients:
+                auction_state.update_bid(client_address, new_bid)
+                data = {"request_type":"BID_ACK","bid_status":"ACCEPTED"}
+            else:
+                data = {"request_type":"BID_ACK","bid_status":"REJECTED"}
+                status_code = 400
         else:
             status_code = 400
             data = {"error": "Missing bid amount"}
@@ -66,62 +50,49 @@ def build_http_response(status_code, data):
     )
 
 def broadcast_status():
-    global highest_bid, highest_bidder, clients, chant
+    global auction_state
     while True:
-        time.sleep(10)
-        with chant_lock:
-            if chant > 0:
-                chant -= 1
-        with bid_lock:
-            
-            status_msg.update({
-                "highest_bid": highest_bid,
-                "highest_bidder": highest_bidder,
-                "n_clients": len(clients),
-                "chant": chant
-            })
-            
-          
-            if status_msg["chant"] == 0:
-                close_msg = {"request_type":"CLOSE", "highest_bid": highest_bid, "highest_bidder":highest_bidder}
-                response = build_http_response(503, close_msg)
-                for client in clients:
-                    try:
-                        client.sendall(response.encode('utf-8'))
-                        client.close()
-                    except Exception as e:
-                        print(f"Error broadcasting to {client}: {e}")
-                        clients.remove(client) 
-                print('Aunction End')
-                break    
-            
-            for client in clients:
-                try:
-                    response = build_http_response(200, status_msg)
-                    client.sendall(response.encode('utf-8'))
-                except Exception as e:
-                    print(f"Error broadcasting to {client}: {e}")
-                    clients.remove(client)
+        time.sleep(0.01)
+        response = None
+        last_bid_time = auction_state.last_bid_time
+        if last_bid_time is None or math.floor((time.time() - last_bid_time) / 10) <= auction_state.chant:
+            continue
+        if auction_state.chant < 3:
+            auction_state.chant += 1
+           
+        if auction_state.chant == 3:
+            msg = {"request_type":"CLOSE", "highest_bid": auction_state.highest_bid, "highest_bidder":auction_state.highest_bidder}
+            response = build_http_response(503, msg)
+            auction_state.reset()
+            print('Aunction End')
+
+        else:
+            response = build_http_response(200, auction_state.build_status_message())
+
+        clients_copy = auction_state.clients.copy()    
+        for client_address, client_socket in clients_copy.items():
+            try:
+                client_socket.sendall(response.encode('utf-8'))
+                if auction_state.chant == 3:
+                    client_socket.close()
+                    print(f"Connection closed for {client_socket}")
+                
+            except Exception as e:
+                print(f"Error broadcasting to {client_address}: {e}")
+                auction_state.remove_client(client_address)
             
 
 def handle_client_connection(client_socket, client_address):
-    global highest_bid, highest_bidder, clients
+    global auction_state
     print(f"New connection from {client_address}")
-    with bid_lock:
-        clients.add(client_socket) 
     try:
         while True:
             data = client_socket.recv(1024).decode('utf-8')
-            response = handle_request(client_address, data)
+            response = handle_request(client_address, client_socket, data)
             client_socket.sendall(response.encode('utf-8'))
     except Exception as e:
         print(f"Error handling connection from {client_address}: {e}")
-    finally:
-        with bid_lock:
-            clients.remove(client_socket)  
-        client_socket.close()
-        print(f"Connection closed for {client_address}")
-
+   
 
 def start_server(host='0.0.0.0', port=8000):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
