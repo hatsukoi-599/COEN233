@@ -1,0 +1,17 @@
+2024-02-08 14:21:06,797 - INFO - Server started on 0.0.0.0:36715
+2024-02-08 14:21:06,797 - INFO - Broadcasting status
+2024-02-08 14:21:13,057 - INFO - New connection from ('10.16.8.24', 56530)
+2024-02-08 14:21:15,115 - INFO - Handling request from ('10.16.8.24', 56530)
+2024-02-08 14:21:15,115 - INFO - Client ('10.16.8.24', 56530) joined. Total clients: 1
+2024-02-08 14:21:15,984 - INFO - Handling request from ('10.16.8.24', 56530)
+2024-02-08 14:21:15,984 - INFO - New bid accepted from ('10.16.8.24', 56530): 1.0
+2024-02-08 14:21:31,057 - INFO - New connection from ('10.16.8.24', 56536)
+2024-02-08 14:21:33,296 - INFO - Handling request from ('10.16.8.24', 56536)
+2024-02-08 14:21:33,296 - INFO - Client ('10.16.8.24', 56536) joined. Total clients: 1
+2024-02-08 14:21:35,209 - INFO - Handling request from ('10.16.8.24', 56536)
+2024-02-08 14:21:35,209 - INFO - New bid accepted from ('10.16.8.24', 56536): 200.0
+2024-02-08 14:21:40,665 - INFO - Connection closed and cleaned up for ('10.16.8.24', 56536)
+2024-02-08 14:22:15,219 - INFO - Auction end - Winner: ('10.16.8.24', 56536) with a bid of 200.0
+2024-02-08 14:22:32,049 - INFO - Handling request from ('10.16.8.24', 56530)
+2024-02-08 14:22:32,049 - INFO - Client ('10.16.8.24', 56530) joined. Total clients: 1
+2024-02-08 14:22:40,079 - INFO - Handling request from ('10.16.8.24', 56530)
