@@ -22,6 +22,7 @@ def handle_request(client_address, client_socket, request):
     global auction_state
     logging.info(f"Handling request from {client_address}")
     request_json = json.loads(request.split('\r\n\r\n')[-1])
+    print(f'Received from {client_address}: {request_json}')
     data = None
     status_code = 200
 
