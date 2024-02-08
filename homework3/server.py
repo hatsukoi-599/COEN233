@@ -1,6 +1,7 @@
 import math
 import socket
 import json
+import sys
 import threading
 import time
 import logging
@@ -75,7 +76,6 @@ def broadcast_status():
         if auction_state.chant > 3:
             msg = {"request_type":"CLOSE", "highest_bid": auction_state.highest_bid, "highest_bidder":auction_state.highest_bidder}
             response = build_http_response(503, msg)
-            auction_state.reset()
             print('Aunction End')
 
         else:
@@ -84,6 +84,12 @@ def broadcast_status():
         clients_copy = auction_state.clients.copy()    
         for client_address, client_socket in clients_copy.items():
             try:
+                # check socket is closed or not before send the response
+                if client_socket.fileno() == -1:
+                    logging.info(f"Socket for {client_address} already closed, removing client.")
+                    auction_state.remove_client(client_address)
+                    continue
+
                 client_socket.sendall(response.encode('utf-8'))
                 logging.info(f"Status broadcasted to {client_address}")
                 if auction_state.chant > 3:
@@ -92,8 +98,10 @@ def broadcast_status():
                 
             except Exception as e:
                 print(f"Error broadcasting to {client_address}: {e}")
-                auction_state.remove_client(client_address)
-            
+                auction_state.remove_client(client_address) 
+        
+        if auction_state.chant > 3:
+            auction_state.reset()    
 
 def handle_client_connection(client_socket, client_address):
     global auction_state
@@ -102,12 +110,18 @@ def handle_client_connection(client_socket, client_address):
     try:
         while True:
             data = client_socket.recv(1024).decode('utf-8')
+            if not data:
+                break
             response = handle_request(client_address, client_socket, data)
             client_socket.sendall(response.encode('utf-8'))
     except Exception as e:
         logging.error(f"Error handling connection from {client_address}: {e}")
         print(f"Error handling connection from {client_address}: {e}")
-   
+    finally:
+        client_socket.close()
+        auction_state.remove_client(client_address)
+        logging.info(f"Connection closed and cleaned up for {client_address}")
+
 
 def start_server(host='0.0.0.0', port=0):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

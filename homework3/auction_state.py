@@ -53,4 +53,4 @@ class AuctionState:
             self.highest_bid = 0
             self.highest_bidder = None
             self.last_bid_time = None
-            self.chant = 3
+            self.chant = 1

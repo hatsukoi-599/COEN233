@@ -5,13 +5,21 @@ import sys
 
 # URL for the server, will be initialized later
 url = None
+server_unavailable = False
 
 def send_requests(sock):
+    global server_unavailable
     """Handles sending requests from the client to the server in a dedicated thread."""
     try:
         while True:
+            if server_unavailable:
+                print("Server unavailable. Exiting...")
+                break
             request_type = input("Enter request type (JOIN, BID, or QUIT to exit): ")
             request = None
+            if server_unavailable:
+                print("Server unavailable. Exiting...")
+                break
             if request_type.upper() == "QUIT":
                 break  # Exit loop if user wants to quit
             if request_type.upper() == "BID":
@@ -49,23 +57,30 @@ def pack_data(request_type, bid_amount=None):
 
 def receive_responses(sock):
     """Responsible for receiving responses from the server in a separate thread."""
+    global server_unavailable
     try:
         while True:
             response = sock.recv(4096)
             if not response:
                 break
-            # Decode response from bytes to string
+            # Decode response from bytes to string,     
             response_str = response.decode('utf-8')
             # Split response into headers and body
             headers, body = response_str.split('\r\n\r\n', 1)
             # Parse JSON from response body
             response_json = json.loads(body)
             print("Received:", response_json)
+
+            if "503 Service Unavailable" in headers:
+                server_unavailable = True
+                print("Received 503 Service Unavailable from server.")
+                break
+            
     except Exception as e:
         print(f"Error receiving responses: {e}")
     finally:
         sock.close()
-        return   
+        sys.exit("Exiting due to server 503 response.")  
 
 def start_client(server_host, server_port):
     """Initializes the client and connects to the server."""
