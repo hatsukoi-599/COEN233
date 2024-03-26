@@ -1,6 +1,6 @@
 This is code repository for SCU 2023Winter CSEN233 Network
 
-#HW1 Numerical Services
+# HW1 Numerical Services
 
 This  is a group assignment.  Find your partner(s).
 
